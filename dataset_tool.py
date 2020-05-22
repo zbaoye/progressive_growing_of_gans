@@ -59,6 +59,30 @@ class TFRecordExporter:
         np.random.RandomState(123).shuffle(order)
         return order
 
+    def add_mat(self, H_data, Tx_data, Rx_data):
+        H_data.transpose(2,0,1), Tx_data.transpose(2,0,1), Rx_data.transpose(2,0,1)
+        if self.print_progress and self.cur_images % self.progress_interval == 0:
+            print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
+        if self.shape is None:
+            self.shape = H_data.shape
+            self.resolution_log2 = int(np.log2(self.shape[1]))
+            assert self.shape[0] == 2
+            assert self.shape[1] == self.shape[2]
+            assert self.shape[1] == 2**self.resolution_log2
+            tfr_opt = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.NONE)
+            for lod in range(self.resolution_log2 - 1):
+                tfr_file = self.tfr_prefix + '-r%02d.tfrecords' % (self.resolution_log2 - lod)
+                self.tfr_writers.append(tf.python_io.TFRecordWriter(tfr_file, tfr_opt))
+        assert H_data.shape == self.shape
+        for lod, tfr_writer in enumerate(self.tfr_writers):
+            ex = tf.train.Example(features=tf.train.Features(feature={
+                'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=H_data.shape)),
+                'H_data': tf.train.Feature(float_list=tf.train.FloatList(value=H_data)),
+                'Tx_data': tf.train.Feature(float_list=tf.train.FloatList(value=Tx_data)),
+                'Rx_data': tf.train.Feature(float_list=tf.train.FloatList(value=Rx_data))}))
+            tfr_writer.write(ex.SerializeToString())
+        self.cur_images += 1
+
     def add_image(self, img):
         if self.print_progress and self.cur_images % self.progress_interval == 0:
             print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
@@ -279,6 +303,33 @@ def compare(tfrecord_dir_a, tfrecord_dir_b, ignore_labels):
     print('Identical images: %d / %d' % (identical_images, idx))
     if not ignore_labels:
         print('Identical labels: %d / %d' % (identical_labels, idx))
+
+#----------------------------------------------------------------------------
+
+def create_channel(tfrecord_dir, channel_dir):
+    print('Loading Channel DataSet from "%s"' % channel_dir)
+    glob_pattern = os.path.join(channel_dir, 'H', '*.mat')
+    image_filenames = sorted(glob.glob(glob_pattern))
+    expected_images = 100000
+    if len(image_filenames) < expected_images:
+        error('Expected to find %d images' % expected_images)
+    
+    with TFRecordExporter(tfrecord_dir, expected_images) as tfr:
+        order = tfr.choose_shuffled_order()
+        for idx in range(order.size):
+            H_dataPath = "H/H_%06d_gt.mat" % (order[idx]+1)
+            H_dataPath = os.path.join(channel_dir,H_dataPath)
+            H_data = scio.loadmat(H_dataPath)['H_data']
+
+            Tx_dataPath = "Tx/Tx_%06d_gt.mat" % (order[idx]+1)
+            Tx_dataPath = os.path.join(channel_dir,Tx_dataPath)
+            Tx_data = scio.loadmat(Tx_dataPath)['Tx_data']
+
+            Rx_dataPath = "Rx/Rx_%06d_gt.mat" % (order[idx]+1)
+            Rx_dataPath = os.path.join(channel_dir,Rx_dataPath)
+            Rx_data = scio.loadmat(Rx_dataPath)['Rx_data']
+
+            tfr.add_mat(H_data, Tx_data, Rx_data)
 
 #----------------------------------------------------------------------------
 
