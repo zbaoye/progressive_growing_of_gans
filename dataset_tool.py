@@ -61,14 +61,16 @@ class TFRecordExporter:
         return order
 
     def add_mat(self, H_data, Tx_data, Rx_data):
-        H_data.transpose(2,0,1), Tx_data.transpose(2,0,1), Rx_data.transpose(2,0,1)
+        H_data=H_data.transpose(2,0,1)
+        Tx_data=Tx_data.transpose(2,0,1)
+        Rx_data=Rx_data.transpose(2,0,1)
         if self.print_progress and self.cur_images % self.progress_interval == 0:
             print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
         if self.shape is None:
             self.shape = H_data.shape
+            print('self.shape',self.shape)
             self.resolution_log2 = int(np.log2(self.shape[1]))
             assert self.shape[0] == 2
-            assert self.shape[1] == self.shape[2]
             assert self.shape[1] == 2**self.resolution_log2
             tfr_opt = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.NONE)
             for lod in range(self.resolution_log2 - 1):
