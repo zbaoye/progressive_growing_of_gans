@@ -73,13 +73,15 @@ class TFRecordExporter:
             assert self.shape[0] == 2
             assert self.shape[1] == 2**self.resolution_log2
             tfr_opt = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.NONE)
-            for lod in range(self.resolution_log2 - 1):
-                tfr_file = self.tfr_prefix + '-r%02d.tfrecords' % (self.resolution_log2 - lod)
-                self.tfr_writers.append(tf.python_io.TFRecordWriter(tfr_file, tfr_opt))
+            tfr_file = self.tfr_prefix + '.tfrecords' 
+            self.tfr_writers.append(tf.python_io.TFRecordWriter(tfr_file, tfr_opt))
         assert H_data.shape == self.shape
+        H_data = H_data.reshape((-1,1),order='F')
+        Tx_data = Tx_data.reshape((-1,1),order='F')
+        Rx_data = Rx_data.reshape((-1,1),order='F')
         for lod, tfr_writer in enumerate(self.tfr_writers):
             ex = tf.train.Example(features=tf.train.Features(feature={
-                'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=H_data.shape)),
+                'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=self.shape)),
                 'H_data': tf.train.Feature(float_list=tf.train.FloatList(value=H_data)),
                 'Tx_data': tf.train.Feature(float_list=tf.train.FloatList(value=Tx_data)),
                 'Rx_data': tf.train.Feature(float_list=tf.train.FloatList(value=Rx_data))}))
