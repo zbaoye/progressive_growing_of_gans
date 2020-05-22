@@ -717,6 +717,11 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir_b',   help='Directory containing second dataset')
     p.add_argument(     '--ignore_labels',  help='Ignore labels (default: 0)', type=int, default=0)
 
+    p = add_command(    'create_channel',     'Create dataset for Channel.',
+                                            'create_channel datasets/channel ~/downloads/channel')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'channel_dir',        help='Directory containing Channel')
+
     p = add_command(    'create_mnist',     'Create dataset for MNIST.',
                                             'create_mnist datasets/mnist ~/downloads/mnist')
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
